@@ -1,0 +1,19 @@
+:root {
+  --primary-color: #0077f2;
+}
+
+body {
+  font-size: 14px;
+}
+
+.fontsize10 { font-size: 10px !important; }
+.fontsize12 { font-size: 12px !important; }
+.fontsize14 { font-size: 14px !important; }
+.fontsize16 { font-size: 16px !important; }
+.fontsize18 { font-size: 18px !important; }
+.fontsize20 { font-size: 20px !important; }
+.fontsize22 { font-size: 22px !important; }
+.fontsize24 { font-size: 24px !important; }
+.fontsize26 { font-size: 26px !important; }
+.fontsize28 { font-size: 26px !important; }
+.fontsize30 { font-size: 30px !important; }
