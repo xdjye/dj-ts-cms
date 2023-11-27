@@ -1,8 +1,14 @@
 <script lang="ts" setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, onMounted } from 'vue'
 import { loadSlim } from 'tsparticles-slim'
-import type { ICodeInfo, IFormInfo } from "./types"
+import { ElMessage } from "element-plus"
+import userLoginInfoStore from "@/store/login"
+import { decryptingContent } from "@/utils/commonUtils"
+import type { ICodeInfo, IFormInfo } from "@/types"
 import type { FormInstance, FormRules } from 'element-plus'
+import { localCache } from '@/utils/cache'
+
+const loginInfoStore = userLoginInfoStore()
 
 const options = ref({
   background: {
@@ -98,8 +104,8 @@ const options = ref({
   detectRetina: true
 });
 
-const userInfo: IFormInfo = reactive({
-  username: null,
+const userInfo = reactive<IFormInfo>({
+  name: null,
   password: null,
   rememberPassword: false,
   verifyCode: null
@@ -123,11 +129,20 @@ const verifyCodeState: ICodeInfo = reactive({
 
 const activeTabKey = ref(tabs[0]?.key);
 
+onMounted(() => {
+  const { name, password,  rememberPassword } = localCache.getCache("userInfo")
+  if(rememberPassword) {
+    userInfo.name = name
+    userInfo.rememberPassword = !!rememberPassword
+    userInfo.password = password ? decryptingContent(password) : null
+  }
+})
+
 // 校验规则
 const userRules = reactive<FormRules<IFormInfo>>({
-  username: [
+  name: [
     { required: true, message: '用户名不能为空！', trigger: 'blur' },
-    { pattern: /^[a-z0-9]{6,20}$/, message: '用户名必须是6~20个字母或数字！', trigger: 'blur' },
+    // { pattern: /^[a-z0-9]{6,20}$/, message: '用户名必须是6~20个字母或数字！', trigger: 'blur' },
   ],
   password: [
     { required: true, message: '密码不能为空！', trigger: 'blur' },
@@ -135,7 +150,7 @@ const userRules = reactive<FormRules<IFormInfo>>({
 });
 
 const phoneRules = reactive<FormRules<IFormInfo>>({
-  username: [
+  name: [
     { required: true, message: '手机号不能为空！', trigger: 'blur' },
     { min: 11, max: 11, message: '手机号必须11位', trigger: 'blur' },
   ],
@@ -150,13 +165,28 @@ const particlesInit = async (engine) => await loadSlim(engine);
 // 立即登录按钮
 const onSubmit = async (formEl: FormInstance | null) => {
   console.log(userInfo);
-  await formEl?.validate()
+  try {
+    await formEl?.validate()
+    if(activeTabKey.value === "user") { // 账号登录
+      const { name, password, rememberPassword } = userInfo
+      loginInfoStore.accountLoginAction({ name, password, rememberPassword })
+    } else { // 验证码登录
+
+    }
+    console.log("触发登录");
+  } catch (error) {
+    console.log("表单校验不通过：", error);
+  }
 }
 
 // 获取验证码按钮
 const getVerifyCode = () => {
-  if(!userInfo.username) {
-    userInputRef.value?.focus && userInputRef.value.focus();
+  if(!userInfo.name) {
+    userInputRef.value?.focus && userInputRef.value.focus()
+    ElMessage({
+      message: '请先填写完整的手机号！',
+      type: 'warning',
+    })
     return
   }
   codeInputRef.value?.focus && codeInputRef.value.focus()
@@ -202,10 +232,11 @@ const verifyCodeBtnText = computed(() => {
             :model="userInfo" 
             :rules="activeTabKey === 'user' ? userRules : phoneRules"
           >
-            <el-form-item class="login-form-item" prop="username">
+            <el-form-item class="login-form-item" prop="name">
               <el-input 
                 class="login-form-input fontsize12"
-                v-model="userInfo.username" 
+                v-model="userInfo.name" 
+                ref="userInputRef"
                 :placeholder="activeTabKey === 'user' ? '请输入用户名' : '请输入手机号'" 
                 clearable 
               />
@@ -214,7 +245,6 @@ const verifyCodeBtnText = computed(() => {
             <el-form-item class="login-form-item" v-show="activeTabKey === 'user'"  prop="password">
               <el-input 
                 class="fontsize12"
-                ref="userInputRef"
                 v-model="userInfo.password" 
                 placeholder="请输入密码" 
                 clearable 
@@ -245,8 +275,8 @@ const verifyCodeBtnText = computed(() => {
               </el-col>
             </el-form-item>
 
-            <el-form-item class="login-form-item rememberAndForgetPassword-item" :class="{ 'is-hide': activeTabKey === 'phone' }">
-              <el-checkbox class="rememberPassword-checkbox" size="small" v-model="userInfo.rememberPassword" label="记住密码" />
+            <el-form-item class="login-form-item rememberAndForgetPassword-item" :class="{ 'is-hide': activeTabKey === 'phone' }" prop="rememberPassword">
+              <el-checkbox class="rememberPassword-checkbox" size="small" v-model="userInfo.rememberPassword" label="记住密码" name="rememberPassword" />
               <el-button class="forgetPassword-btn">忘记密码</el-button>
             </el-form-item>
 
@@ -254,6 +284,10 @@ const verifyCodeBtnText = computed(() => {
               <el-button class="fontsize12 login-submitBtn" type="primary" @click="onSubmit(ruleFormRef)">立即登录</el-button>
             </el-form-item>
           </el-form>
+          <div class="register-box">
+            没有账号？
+            <el-button class="fontsize12" type="text">立即注册</el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -345,5 +379,13 @@ const verifyCodeBtnText = computed(() => {
       }
     }
   }
+}
+.register-box {
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1;
 }
 </style>
